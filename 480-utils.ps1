@@ -310,9 +310,9 @@ Function getnvm {
     }
 }
 
-connectvcenter
+Function clonevms {
+# VM cloning function only.
 
-if ($global:DefaultVIServers) { # If there's a connection to a vcenter server.
     getbasevm
     getbvmsnsh
     getesxihost
@@ -338,6 +338,12 @@ if ($global:DefaultVIServers) { # If there's a connection to a vcenter server.
             }
         }
     }
+}
+
+connectvcenter
+
+if ($global:DefaultVIServers) { # If there's a connection to a vcenter server.
+    clonevms
 }
 
 Write-Host "Exiting..." -fore green
