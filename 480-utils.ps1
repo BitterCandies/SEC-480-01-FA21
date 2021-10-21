@@ -1,3 +1,10 @@
+# TO DO
+#   Add a function that creates a blueX-LAN networ (?)
+#   Create the blueX-fw vm (via full clone or linked)
+#   Create a function to start a vm by name
+#   Create a function to set the network adapters of a virtual machine to a network of choice
+#   Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
+
 clear
 $vser = "vcenter.tao.local" # name variable for vcenter connection
 $global:basevm = $null # name variable for the base vm for any cloning process
