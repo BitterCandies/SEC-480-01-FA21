@@ -1,5 +1,8 @@
 # TO DO
-#   Add a function that creates a blueX-LAN networ (?)
+#   Reformat it so that there's not a ton of different variables.
+#   Create a function to add a virtual switch and portgroup
+#   Make it pull from a configuration file
+#   Add a function that creates a blueX-LAN network (?)
 #   Create the blueX-fw vm (via full clone or linked)
 #   Create a function to start a vm by name
 #   Create a function to set the network adapters of a virtual machine to a network of choice
@@ -31,7 +34,7 @@ Function connectvcenter {
         
         if (($vseranswer) -and ($vseranswer -notmatch $vser)) { # If the user answers a server that does not match the default, it starts the connection process.
             Write-Host "Connecting to vcenter server $vseranswer..." -fore green
-            $connpos = Connect-VIServer($vseranswer) -ErrorVariable err -ea SilentlyContinue
+            Connect-VIServer($vseranswer) -ErrorVariable err -ea SilentlyContinue
             
             if ($err) { # If there's an error attempting to connect to the user-given server, it asks if they want to try again.
                 $tryvser = Read-Host -Prompt "There was an issue using the vcenter server $vseranswer. Would you like to try again? [Y]es try again, or [N]o"
@@ -49,7 +52,7 @@ Function connectvcenter {
             if ($global:DefaultVIServers) { # If it is already connected to the default server, it skips the connection process.
                 $tryvser = 'n'
             } else { # If it's not connected, it begins the connecton process.
-                $connpos = Connect-VIServer($vser) -ErrorVariable err -ea SilentlyContinue
+                Connect-VIServer($vser) -ErrorVariable err -ea SilentlyContinue
                 
                 if ($err) { # If there was an error using the default server, it asks if they want to try again.
                     $tryvser = Read-Host -Prompt "There was an issue using the vcenter server $vser. Would you like to try again? [Y]es try again, or [N]o"
