@@ -35,6 +35,7 @@ Function connectvcenter {
             }
             else {
                 # If there's not an error, it continues.
+                $global:visername = $vseranswer
                 $tryvser = 'n'
             }
         }
@@ -63,6 +64,7 @@ Function connectvcenter {
                 else {
                     # If there's no error, it's done.
                     $tryvser = 'n'
+                    $global:visername = $vser
                 }
             }
         }
@@ -85,7 +87,7 @@ Beginning the cloning process. Some information is needed first. Here is a list 
 
     while ($tryvm -notmatch '^[nN]$') {
         # While they need to get a proper vm...
-        $basevm = Read-Host -Prompt "Please enter the full name of the vm you are cloning"
+        $global:basevm = Read-Host -Prompt "Please enter the full name of the vm you are cloning"
         
         foreach ($i in $vmtable) {
             # If their answer matches anything in the table. 
@@ -107,7 +109,7 @@ Beginning the cloning process. Some information is needed first. Here is a list 
             if ($tryvm -notmatch '^[yY]$') {
                 # If they say no to trying again, it exits.
                 Write-Host "Exiting..." -fore red
-                exit
+                break exitclonevms
             } 
         }
     }
@@ -142,7 +144,7 @@ The following is a list of snapshots available on $bvm :"
                     if ($trysnsh -notmatch '^[yY]$') {
                         # If they say no to trying again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -162,7 +164,7 @@ The following is a list of snapshots available on $bvm :"
                     if ($trysnsh -notmatch '^[yY]$') {
                         # If they say no to trying again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -209,7 +211,7 @@ The following is a list of ESXi Hosts:"
                     if ($tryesxi -notmatch '^[yY]$') {
                         # If they say no to trying again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -229,7 +231,7 @@ The following is a list of ESXi Hosts:"
                     if ($tryesxi -notmatch '^[yY]$') {
                         # If they say no to trying again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -276,7 +278,7 @@ The following is a list of datastores:"
                     if ($tryds -notmatch '^[yY]$') {
                         # Don't try again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -296,7 +298,7 @@ The following is a list of datastores:"
                     if ($tryds -notmatch '^[yY]$') {
                         # Don't try again.
                         Write-Host "Exiting..." -fore red
-                        exit
+                        break exitclonevms
                     }
                 }
                 else {
@@ -327,7 +329,7 @@ Function getlinkedvm {
         # Error creating linked clone.
         Write-Host "There was an issue creating the linked vm $lname." -fore red
         Write-Host "Exiting..." -fore red
-        exit
+        break exitclonevms
     }
     else {
         # No error creating linked clone.
@@ -347,7 +349,7 @@ Function getnvm {
         # Error creating temporary linked clone.
         Write-Host "There was an issue creating the temporary linked vm." -fore red
         Write-Host "Exiting..." -fore red
-        exit
+        break exitclonevms
     }
     else {
         # No error.
@@ -364,7 +366,7 @@ Function getnvm {
         # Error creating new vm from linked vm.
         Write-Host "There was an issue creating the new vm." -fore red
         Write-Host "Exiting..." -fore red
-        exit
+        break exitclonevms
     }
     else {
         # No error.
@@ -374,15 +376,9 @@ Function getnvm {
     }
 }
 
-Function clonevms {
-    # VM cloning function only.
-
-    getbasevm
-    getbvmsnsh
-    getesxihost
-    getds
+Function cloning {
     $tryclone = 'y'
-    
+        
     while ($tryclone -notmatch '^[nN]$') {
         # Asks whether the user wants to create a linked clone only or a full clone. 
         $clonetype = Read-Host -Prompt "
@@ -406,9 +402,22 @@ Would you like to create a [L]inked clone or a [F]ull clone?"
             if ($tryclone -notmatch '^[yY]$') {
                 # If they don't wanna try again.
                 Write-Host "Exiting..." -fore red
-                exit
+                break exitclonevms
             }
         }
+    }
+}
+
+Function clonevms {
+    # VM cloning function only.
+
+    :exitclonevms while ($true) {
+        getbasevm
+        getbvmsnsh
+        getesxihost
+        getds
+        cloning
+        break
     }
 }
 
@@ -416,7 +425,38 @@ connectvcenter
 
 if ($global:DefaultVIServers) {
     # If there's a connection to a vcenter server.
-    clonevms
-}
+    Write-Host "Now connected to $visername."
+    while ($true) {
+        Write-Host "
+Please choose an option:
+[1] Create a linked or full VM clone
+[2] Start a VM
+[3] Set a VM's network adapter(s)
+[4] Add a virtual switch and portgroup
+[5] Retrieve the first IP address of a VM
+[6] Exit Program"
+        $what = Read-Host -Prompt "Choose"
 
-Write-Host "Exiting..." -fore green
+        switch ($what) {
+            '1' {
+                clonevms
+            }
+            '2' {
+                Write-Host "Start VM Temp"
+            }
+            '3' {
+                Write-Host "Set VM Net Adapters Temp"
+            }
+            '4' {
+                Write-Host "Adding virtual switch and portgroup Temp"
+            }
+            '5' {
+                Write-Host "Retrieve IP address of a vm Temp"
+            }
+            '6' {
+                Write-Host "Exiting..." -fore green
+                Exit
+            }
+        }
+    }
+}
