@@ -71,6 +71,10 @@ Function connectvcenter {
     }
 }
 
+#
+# THE FOLLOWING FUNCTIONS ARE JUST FOR VM CLONING
+#
+
 Function getbasevm { 
     # This one will list the available vms to clone. It will ask the user to enter the full name of the vm they would like to clone. 
     # If there's no match found, it asks if they want to try again.
@@ -104,7 +108,7 @@ Beginning the cloning process. Some information is needed first. Here is a list 
         if ($tryvm -notmatch 'n') {
             # If there's no matches at all, it asks if they want to try again.
             Write-Host "No VM of that name was found. Try again?" -fore red
-            $tryvm = Read-Host "[Y]es try again, or [N]o, don't try again."
+            $tryvm = Read-Host -Prompt "[Y]es try again, or [N]o, don't try again."
 
             if ($tryvm -notmatch '^[yY]$') {
                 # If they say no to trying again, it exits.
@@ -371,7 +375,7 @@ Function getnvm {
     else {
         # No error.
         Write-Host "The new vm $vmname has been created!" -fore green
-        Write-Host "Please do not forget about the temporary linked clone $lname. It is suggested that you delete it manually using [Remove-VM -name $lname]." -fore blue
+        Write-Host "Please do not forget about the temporary linked clone $lname. It is suggested that you delete it manually using [Remove-VM -vm $lname]." -fore blue
         #Write-Host $nvm
     }
 }
@@ -421,6 +425,64 @@ Function clonevms {
     }
 }
 
+#
+# THE ABOVE FUNCTIONS ARE JUST FOR VM CLONING
+#
+
+Function startvms {
+    $vmtable = @(Get-VM | Sort-object | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
+    Write-Host "The following is a list of vms that you can start:"
+
+    foreach ($i in $vmtable) {
+        # Looping through the table of VMs to output them properly.
+        Write-Host $i
+    }
+    $trystartvms = 'y'
+    while ($trystartvms -notmatch '^[nN]$') {
+        # While they need to get a proper vm...
+        $startvm = Read-Host -Prompt "Please enter a vm name"
+        
+        foreach ($i in $vmtable) {
+            # If their answer matches anything in the table. 
+            #This can go wrong if they have vms with the same character length and the same first and ending characters.
+
+            if ($startvm -match ('^{0}$' -f $i)) {
+                Write-Host "Match found: $i" -fore green
+                $trystartvms = 'n'
+                $vmstate = Get-VM -name $startvm -ErrorVariable err -ea SilentlyContinue | Select-Object PowerState
+
+                If ($vmstate -notmatch 'PoweredOn') {
+                    Start-VM -VM $startvm
+                    Write-Host "VM Started." -fore green
+                } else {
+                    Write-Host "VM is already on." -fore yellow
+                }
+            }
+        }
+
+        if ($trystartvms -notmatch 'n') {
+            # If there's no matches at all, it asks if they want to try again.
+            Write-Host "No VM of that name was found. Try again?" -fore red
+            $trystartvms = Read-Host -Prompt "[Y]es try again, or [N]o, don't try again."
+
+            if ($trystartvms -notmatch '^[yY]$') {
+                # If they say no to trying again, it exits.
+                Write-Host "Exiting..." -fore red
+            } 
+        }
+
+        if ($err) {
+            Write-Host "There was an error attempting to start that VM. Would you like to try again?" -fore red
+            $trystartvms = Read-Host -Prompt "[Y]es try again, or [N]o"
+
+            if ($trystartvms -notmatch '^[yY]$') {
+                # If they say no to trying again, it exits.
+                Write-Host "Exiting..." -fore red
+            } 
+        }
+    }
+}
+
 connectvcenter
 
 if ($global:DefaultVIServers) {
@@ -442,7 +504,7 @@ Please choose an option:
                 clonevms
             }
             '2' {
-                Write-Host "Start VM Temp"
+                startvms
             }
             '3' {
                 Write-Host "Set VM Net Adapters Temp"
