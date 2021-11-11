@@ -1,12 +1,14 @@
 # TO DO
+#   MAKE IT SO THAT NETWORK ADAPTER LIST DISPLAYS WITH CURRENT NETWORK SETTINGS
+
 #   Create a function to add a virtual switch and portgroup
 #   Add a function that creates a blueX-LAN network (?)
 #   Create the blueX-fw vm (via full clone or linked)
-#   Create a function to start a vm by name
-#   Create a function to set the network adapters of a virtual machine to a network of choice
 #   Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
 
 clear
+
+. ./480-vars.ps1
 
 Function connectvcenter { 
     # This is just to connect to the vcenter server. It will always ask first which server to connect to. 
@@ -454,7 +456,8 @@ Function startvms {
                 If ($vmstate -notmatch 'PoweredOn') {
                     Start-VM -VM $startvm
                     Write-Host "VM Started." -fore green
-                } else {
+                }
+                else {
                     Write-Host "VM is already on." -fore yellow
                 }
             }
@@ -476,6 +479,107 @@ Function startvms {
             $trystartvms = Read-Host -Prompt "[Y]es try again, or [N]o"
 
             if ($trystartvms -notmatch '^[yY]$') {
+                # If they say no to trying again, it exits.
+                Write-Host "Exiting..." -fore red
+            } 
+        }
+    }
+}
+
+Function setvmnetadapt {
+    $vmtable = @(Get-VM | Sort-object | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
+    Write-Host "The following is a list of vms that you can change the network adapters of:"
+
+    foreach ($i in $vmtable) {
+        # Looping through the table of VMs to output them properly.
+        Write-Host $i
+    }
+    $trysetvmna = 'y'
+    while ($trysetvmna -notmatch '^[nN]$') {
+        # While they need to get a proper vm...
+        $setvmna = Read-Host -Prompt "Please enter a vm name"
+        
+        foreach ($i in $vmtable) {
+            # If their answer matches anything in the table. 
+            #This can go wrong if they have vms with the same character length and the same first and ending characters.
+
+            if ($setvmna -match ('^{0}$' -f $i)) {
+                Write-Host "Match found: $i" -fore green
+
+                $vmneta = @(Get-VM $setvmna | Get-NetworkAdapter)
+
+                foreach ($i in $vmneta) {
+                    Write-Host $i
+                }
+                
+                $vmna = Read-Host -Prompt "Please choose a network adapter"
+                $choosenetadapt = 0
+
+                foreach ($i in $vmneta) {
+
+                    if ($vmna -match ('^{0}$' -f $i)) {
+                        $choosenetadapt += 1
+                    }
+
+                }
+
+                if ($choosenetadapt -match 0) {
+                    Write-Host "No network adapter named $vmna was found on $setvmna." -fore red
+
+                    $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
+
+                    if ($trysetvmna -match '^[nN]$') {
+                        Write-Host "Exiting..." -fore red
+                    }
+                }
+                else {
+                    $networkname = Read-Host -Prompt "Please choose a network adapter network (default is $vmnetwork)"
+
+                    if (($networkname) -and ($networkname -notmatch $vmnetwork)) {
+                        Write-Host "Setting network adapter $vmna to $networkname..."
+                        Get-VM $setvmna | Get-NetworkAdapter -Name $vmna | Set-NetworkAdapter -NetworkName $networkname -ErrorVariable err -ea SilentlyContinue
+                        
+                        if ($err) {
+                            Write-Host "There was an issue setting the vm" -fore red
+                            $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
+
+                            if ($trysetvmna -match '^[nN]$') {
+                                Write-Host "Exiting..." -fore red
+                            }
+
+                        }
+                        else {
+                            Write-Host "VM Network Adapter $vmna was set to $networkname on $setvmna" -fore green
+                            $trysetvmna = 'n'
+                        }
+                    }
+                    else {
+                        Write-Host "Setting network adapter $vmna to $vmnetwork..."
+                        Get-VM $setvmna | Get-NetworkAdapter -Name $vmna | Set-NetworkAdapter -NetworkName $vmnetwork -ErrorVariable err -ea SilentlyContinue
+
+                        if ($err) {
+                            Write-Host "There was an issue setting the vm network adapter." -fore red
+                            $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
+
+                            if ($trysetvmna -match '^[nN]$') {
+                                Write-Host "Exiting..." -fore red
+                            }
+                        }
+                        else {
+                            Write-Host "VM Network Adapter $vmna was set to $vmnetwork on $setvmna" -fore green
+                            $trysetvmna = 'n'
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($trysetvmna -notmatch 'n') {
+            # If there's no matches at all, it asks if they want to try again.
+            Write-Host "No VM of that name was found. Try again?" -fore red
+            $trysetvmna = Read-Host -Prompt "[Y]es try again, or [N]o, don't try again."
+
+            if ($trysetvmna -notmatch '^[yY]$') {
                 # If they say no to trying again, it exits.
                 Write-Host "Exiting..." -fore red
             } 
@@ -507,7 +611,7 @@ Please choose an option:
                 startvms
             }
             '3' {
-                Write-Host "Set VM Net Adapters Temp"
+                setvmnetadapt
             }
             '4' {
                 Write-Host "Adding virtual switch and portgroup Temp"
