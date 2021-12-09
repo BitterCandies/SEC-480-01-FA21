@@ -504,11 +504,7 @@ Function setvmnetadapt {
             if ($setvmna -match ('^{0}$' -f $i)) {
                 Write-Host "Match found: $i" -fore green
 
-                $nanames = @(Get-VM $setvmna | Get-NetworkAdapter| Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" -replace "= ", "" })
-                $nanets = @(Get-VM $setvmna | Get-NetworkAdapter| Select-Object NetworkName | ForEach-Object { $_ -replace "@{NetworkName=", "" -replace "}", "" -replace "= ", "" })
-                For ($i=0; $i -le 1; $i+=1) {
-                    Write-Host ($nanames[$i] + ' - ' + $nanets[$i])
-                }
+                Get-VM $setvmna | Get-NetworkAdapter
 
                 $vmneta = @(Get-VM $setvmna | Get-NetworkAdapter)
 
@@ -587,6 +583,79 @@ Function setvmnetadapt {
     }
 }
 
+Function newportandvs {
+    $tryswndport = 'y'
+    While ($tryswndport -match '^[yY]$') {
+        Write-Host "Would you like to create a new switch or a new port group?
+[1] Switch
+[2] Port Group"
+        $sworport = Read-Host -Prompt "Choose"
+
+        switch ($sworport) {
+            '1' {
+                Write-Host "Listing existing switches..."
+                Get-VirtualSwitch
+                $newswitch = Read-Host -Prompt "Please enter the name of the new virtual switch"
+
+                Write-Host "Listing existing VM Hosts..."
+                Get-VMHost | Select-Object Name
+                $getvmh = Read-Host -Prompt "Please enter the VM Host"
+                
+                New-VirtualSwitch -name $newswitch -VMHost $getvmh -ErrorVariable err -ea SilentlyContinue
+
+                if ($err) {
+                    Write-Host "There was an issue attempting to create a new virtual switch named $newswitch on $getvmh."
+                    $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                    if ($tryswndport -match '^[nN]$') {
+                        Write-Host "Exiting..." -fore red
+                    }
+                } else {
+                    $portbool = Read-Host -Prompt "Create a matching port group as well? [Y]es or [N]o"
+                    if ($portbool -match '^[yY]$') {
+                        New-VirtualPortGroup -Name $newswitch -VirtualSwitch $newswitch -ErrorVariable err -ea SilentlyContinue
+
+                        if ($err) {
+                            Write-Host "There was an issue attempting to create a new port group named $newswitch for virtual switch $newswitch on $getvmh."
+                            $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                            if ($tryswndport -match '^[nN]$') {
+                                Write-Host "Exiting..." -fore Red
+                            }
+                        }
+                    } else {
+                        $tryswndport = 'n'
+                    }
+                    $tryswndport = 'n'
+                }
+            }
+            '2' {
+                Write-Host "Listing virtual port groups..."
+                Get-VirtualPortGroup | Select-Object Name
+                $newportgroup = Read-Host -Prompt "Please enter the name of the new port group"
+
+                Write-Host "Listing virtual switches..."
+                Get-VirtualSwitch | Select-Object Name
+                $selswitch = Read-Host -Prompt "Please enter the name of a switch"
+                New-VirtualPortGroup -Name $newportgroup -VirtualSwitch $selswitch -ErrorVariable err -ea SilentlyContinue
+
+                if ($err) {
+                    Write-Host "There was an issue creating new port group $newportgroup for switch $selswitch."
+                    $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                    if ($tryswndport -match '^[nN]$') {
+                        Write-Host "Exiting..." -fore red
+                    }
+                } else {
+                    $tryswndport = 'n'
+                }
+
+            }
+        }
+        
+    }   
+}
+
 connectvcenter
 
 if ($global:DefaultVIServers) {
@@ -614,7 +683,7 @@ Please choose an option:
                 setvmnetadapt
             }
             '4' {
-                Write-Host "Adding virtual switch and portgroup Temp"
+                newportandvs
             }
             '5' {
                 Write-Host "Retrieve IP address of a vm Temp"
