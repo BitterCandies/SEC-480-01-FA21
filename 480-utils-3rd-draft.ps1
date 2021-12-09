@@ -1,10 +1,8 @@
 # TO DO
-#   MAKE IT SO THAT NETWORK ADAPTER LIST DISPLAYS WITH CURRENT NETWORK SETTINGS
-
-#   Create a function to add a virtual switch and portgroup
-#   Add a function that creates a blueX-LAN network (?)
-#   Create the blueX-fw vm (via full clone or linked)
-#   Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
+#    Create a function to add a virtual switch and portgroup
+#    Add a function that creates a blueX-LAN network (?)
+#    Create the blueX-fw vm (via full clone or linked)
+#    Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
 
 clear
 
@@ -81,7 +79,7 @@ Function getbasevm {
     # This one will list the available vms to clone. It will ask the user to enter the full name of the vm they would like to clone. 
     # If there's no match found, it asks if they want to try again.
 
-    $vmtable = @(Get-VM | Sort-object | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
+    $vmtable = @(Get-Folder -name $basefolder | Get-VM | Sort-object | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
     Write-Host "
 Beginning the cloning process. Some information is needed first. Here is a list of the VMs that can be cloned:"
 
@@ -506,12 +504,14 @@ Function setvmnetadapt {
             if ($setvmna -match ('^{0}$' -f $i)) {
                 Write-Host "Match found: $i" -fore green
 
+                $nanames = @(Get-VM $setvmna | Get-NetworkAdapter| Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" -replace "= ", "" })
+                $nanets = @(Get-VM $setvmna | Get-NetworkAdapter| Select-Object NetworkName | ForEach-Object { $_ -replace "@{NetworkName=", "" -replace "}", "" -replace "= ", "" })
+                For ($i=0; $i -le 1; $i+=1) {
+                    Write-Host ($nanames[$i] + ' - ' + $nanets[$i])
+                }
+
                 $vmneta = @(Get-VM $setvmna | Get-NetworkAdapter)
 
-                foreach ($i in $vmneta) {
-                    Write-Host $i
-                }
-                
                 $vmna = Read-Host -Prompt "Please choose a network adapter"
                 $choosenetadapt = 0
 
