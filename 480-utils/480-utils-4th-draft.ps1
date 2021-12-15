@@ -609,26 +609,33 @@ Function newportandvs {
     }   
 }
 
-Function retrieveip {
-    $tryip = 'y'
-    While ($tryip -match '^[yY]$') {
-        Get-VM | Sort-Object -Property Name
-        $setvm = Read-Host -Prompt "Select a VM to retrieve the IP of"
-        $thevm = Get-VM -Name $setvm -ErrorVariable err -ea silentlycontinue
+Function retrieveip($vmname) {
+    #if ($vmname) {
+    #    Return ((Get-VM -Name $vmname).guest.IPAddress) + " hostname=" + $vmname
+    #}
+    #else {
+        Write-Host $vmname
+        $tryip = 'y'
+        While ($tryip -match '^[yY]$') {
+            Get-VM | Sort-Object -Property Name
+            $setvm = Read-Host -Prompt "Select a VM to retrieve the IP of"
+            $thevm = Get-VM -Name $setvm -ErrorVariable err -ea silentlycontinue
 
-        if ($err) {
-            Write-Host "There was an issue with VM $setvm." -fore red
-            $tryip = Read-Host -Prompt "Try again? [Y]es or [N]o"
+            if ($err) {
+                Write-Host "There was an issue with VM $setvm." -fore red
+                $tryip = Read-Host -Prompt "Try again? [Y]es or [N]o"
 
-            if ($tryip -match '^[nN]$') {
-                Write-Host "Exiting..." -fore Red
+                if ($tryip -match '^[nN]$') {
+                    Write-Host "Exiting..." -fore Red
+                }
+            } else {
+                $output = $thevm.guest.IPAddress[0] + " hostname=" + $setvm
+                Write-Host $output
+                $tryip = 'n'
             }
-        } else {
-            $output = $thevm.guest.IPAddress[0] + " hostname=" + $setvm
-            Write-Host $output
-            $tryip = 'n'
-        }
-    }
+        }  
+    #}
+    
 }
 
 connectvcenter
