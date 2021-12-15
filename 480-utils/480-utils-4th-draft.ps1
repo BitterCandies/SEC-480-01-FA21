@@ -1,6 +1,4 @@
 # TO DO
-#    Add a function that creates a blueX-LAN network (?)
-#    Create the blueX-fw vm (via full clone or linked)
 #    Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
 
 clear
@@ -19,17 +17,26 @@ Function connectvcenter {
     
     while ($tryvser -notmatch '^[nN]$') {
         # While it still needs to get the proper vcenter server connection...
-        $vseranswer = Read-Host -Prompt "Enter the vcenter server you would like to connect to [default is $vser]"
+        $vseranswer = Read-Host -Prompt "Enter the vcenter server you would like to connect to (default is $vser)"
+
+        if (-not $vseranswer) {
+            $vseranswer = $vser
+        }
         
-        if (($vseranswer) -and ($vseranswer -notmatch $vser)) {
-            # If the user answers a server that does not match the default, it starts the connection process.
-            Write-Host "Connecting to vcenter server $vseranswer..." -fore green
-            Connect-VIServer($vseranswer) -ErrorVariable err -ea SilentlyContinue
+        Write-Host "Using vcenter server $vseranswer..." -fore green
+        
+        if ($global:DefaultVIServers) {
+            # If it is already connected to theserver, it skips the connection process.
+            $tryvser = 'n'
+        }
+        else {
+            # If it's not connected, it begins the connecton process.
+            Connect-VIServer($vser) -ErrorVariable err -ea SilentlyContinue
             
             if ($err) {
-                # If there's an error attempting to connect to the user-given server, it asks if they want to try again.
+                # If there was an error using the server, it asks if they want to try again.
                 $tryvser = Read-Host -Prompt "There was an issue using the vcenter server $vseranswer. Would you like to try again? [Y]es try again, or [N]o"
-                
+
                 if ($tryvser -notmatch '^[yY]$') {
                     # If they say no to trying again, it exits.
                     Write-Host "Exiting..." -fore red
@@ -37,40 +44,12 @@ Function connectvcenter {
                 }
             }
             else {
-                # If there's not an error, it continues.
+                # If there's no error, it's done.
+                $tryvser = 'n'
                 $global:visername = $vseranswer
-                $tryvser = 'n'
             }
         }
-        else {
-            # If the user enters the default server or hits enter
-            Write-Host "Using default vcenter server..." -fore green
-            
-            if ($global:DefaultVIServers) {
-                # If it is already connected to the default server, it skips the connection process.
-                $tryvser = 'n'
-            }
-            else {
-                # If it's not connected, it begins the connecton process.
-                Connect-VIServer($vser) -ErrorVariable err -ea SilentlyContinue
-                
-                if ($err) {
-                    # If there was an error using the default server, it asks if they want to try again.
-                    $tryvser = Read-Host -Prompt "There was an issue using the vcenter server $vser. Would you like to try again? [Y]es try again, or [N]o"
-
-                    if ($tryvser -notmatch '^[yY]$') {
-                        # If they say no to trying again, it exits.
-                        Write-Host "Exiting..." -fore red
-                        exit
-                    }
-                }
-                else {
-                    # If there's no error, it's done.
-                    $tryvser = 'n'
-                    $global:visername = $vser
-                }
-            }
-        }
+        
     }
 }
 
@@ -140,46 +119,28 @@ The following is a list of snapshots available on $bvm :"
             # While it needs a proper snapshot...
             $snshanswer = Read-Host -Prompt "Please enter the name of the snapshot to utilize from $bvm (default is $snshname)"
 
-            if ($snshanswer) {
-                # If the user chooses non-default answer.
-                $global:snsh = Get-Snapshot -vm $bvm -name $snshanswer -ErrorVariable err -ea SilentlyContinue
+            if (-not $snshanswer) {
+                $snshanswer = $snshname
+            }
+                      
+            $global:snsh = Get-Snapshot -vm $bvm -name $snshanswer -ErrorVariable err -ea SilentlyContinue
 
-                if ($err) {
-                    # If there's an error with the non-default answer.
-                    $trysnsh = Read-Host -Prompt "There was an issue retrieving a snapshot by the name of $snshanswer from $bvm. Try again? [Y]es or [N]o"
-                    
-                    if ($trysnsh -notmatch '^[yY]$') {
-                        # If they say no to trying again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # If there's no error with the non-default answer.
-                    $trysnsh = 'n'
-                    Write-Host "Snapshot set." -fore green
+            if ($err) {
+                # If there's an error with the snapshot.
+                $trysnsh = Read-Host -Prompt "There was an issue retrieving a snapshot by the name of $snsh from $bvm. Try again? [Y]es or [N]o"
+
+                if ($trysnsh -notmatch '^[yY]$') {
+                    # If they say no to trying again.
+                    Write-Host "Exiting..." -fore red
+                    break exitclonevms
                 }
             }
             else {
-                # If they choose the default snapshot.
-                $global:snsh = Get-Snapshot -vm $bvm -name $snshname -ErrorVariable err -ea SilentlyContinue
-
-                if ($err) {
-                    # If there's an error with the default snapshot.
-                    $trysnsh = Read-Host -Prompt "There was an issue retrieving a snapshot by the name of $snsh from $bvm. Try again? [Y]es or [N]o"
-
-                    if ($trysnsh -notmatch '^[yY]$') {
-                        # If they say no to trying again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # No error, continues.
-                    $trysnsh = 'n'
-                    Write-Host "Snapshot set." -fore green
-                }
+                # No error, continues.
+                $trysnsh = 'n'
+                Write-Host "Snapshot set." -fore green
             }
+            
         }
     }
     else {
@@ -207,46 +168,28 @@ The following is a list of ESXi Hosts:"
             # While it needs a proper vmhost...
             $esxianswer = Read-Host -Prompt "Please enter the IP address/Name of  the ESXi Host to use (default is $vmhost)"
 
-            if ($esxianswer) {
-                # If the user gives a non-default answer.
-                $global:vmh = Get-VMHost -name $esxianswer -ErrorVariable err -ea Silentlycontinue
+            if (-not $esxianswer) {
+                $esxianswer = $vmhost
+            }
 
-                if ($err) {
-                    # If there's an error with the user answer.
-                    $tryesxi = Read-Host -Prompt "There was an issue with the ESXi host $esxianswer. Try again? [Y]es or [N]o"
+            $global:vmh = Get-VMHost -name $esxianswer -ErrorVariable err -ea SilentlyContinue
 
-                    if ($tryesxi -notmatch '^[yY]$') {
-                        # If they say no to trying again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # If there's not an error, it continues.
-                    $tryesxi = 'n'
-                    Write-Host "ESXi Host set." -fore green
+            if ($err) {
+                # If there's an error.
+                $tryesxi = Read-Host -Prompt "There was an issue with the ESXi host $esxianswer. Try again? [Y]es or [N]o"
+
+                if ($tryesxi -notmatch '^[yY]$') {
+                    # If they say no to trying again.
+                    Write-Host "Exiting..." -fore red
+                    break exitclonevms
                 }
             }
             else {
-                # If they use the default vmhost.
-                $global:vmh = Get-VMHost -name $vmhost -ErrorVariable err -ea SilentlyContinue
-
-                if ($err) {
-                    # If there's an error with the default vmhost.
-                    $tryesxi = Read-Host -Prompt "There was an issue with the ESXi host $vmhost. Try again? [Y]es or [N]o"
-
-                    if ($tryesxi -notmatch '^[yY]$') {
-                        # If they say no to trying again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # If there's no error, it continues.
-                    $tryesxi = 'n'
-                    Write-Host "ESXi Host set." -fore green
-                }
+                # If there's no error, it continues.
+                $tryesxi = 'n'
+                Write-Host "ESXi Host set." -fore green
             }
+            
             #Write-Host $vmh # Testing only write-host.
         }
     }
@@ -274,46 +217,28 @@ The following is a list of datastores:"
             # While it needs a proper datastore...
             $dsanswer = Read-Host -Prompt "Please enter the name of the datastore to use (default is $ds)"
 
-            if ($dsanswer) {
-                # User-answer datastore.
-                $global:dstore = Get-Datastore -name $dsanswer -ErrorVariable err -ea SilentlyContinue
+            if (-not $dsanswer) {
+                $dsanswer = $ds
+            }
+            
+            $global:dstore = Get-Datastore -name $dsanswer -ErrorVariable err -ea SilentlyContinue
 
-                if ($err) {
-                    # Error with user-answer.
-                    $tryds = Read-Host -Prompt "There was an issue finding datastore $dsanswer. Try again? [Y]es or [N]o"
+            if ($err) {
+                # Error with datastore.
+                $tryds = Read-Host -Prompt "There was an issue finding datastore $dsanswer. Try again? [Y]es or [N]o"
 
-                    if ($tryds -notmatch '^[yY]$') {
-                        # Don't try again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # No error.
-                    $tryds = 'n'
-                    Write-Host "Datastore set." -fore green
+                if ($tryds -notmatch '^[yY]$') {
+                    # Don't try again.
+                    Write-Host "Exiting..." -fore red
+                    break exitclonevms
                 }
             }
             else {
-                # Default datastore.
-                $global:dstore = Get-Datastore -name $ds -ErrorVariable err -ea SilentlyContinue
-
-                if ($err) {
-                    # Error with default datastore.
-                    $tryds = Read-Host -Prompt "There was an issue finding datastore $ds. Try again? [Y]es or [N]o"
-
-                    if ($tryds -notmatch '^[yY]$') {
-                        # Don't try again.
-                        Write-Host "Exiting..." -fore red
-                        break exitclonevms
-                    }
-                }
-                else {
-                    # No error.
-                    $tryds = 'n'
-                    Write-Host "Datastore set." -fore green
-                }
+                # No error.
+                $tryds = 'n'
+                Write-Host "Datastore set." -fore green
             }
+            
         }
         #Write-Host $dstore
     }
@@ -534,41 +459,26 @@ Function setvmnetadapt {
                 else {
                     $networkname = Read-Host -Prompt "Please choose a network adapter network (default is $vmnetwork)"
 
-                    if (($networkname) -and ($networkname -notmatch $vmnetwork)) {
-                        Write-Host "Setting network adapter $vmna to $networkname..."
-                        Get-VM $setvmna | Get-NetworkAdapter -Name $vmna | Set-NetworkAdapter -NetworkName $networkname -ErrorVariable err -ea SilentlyContinue
-                        
-                        if ($err) {
-                            Write-Host "There was an issue setting the vm" -fore red
-                            $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
+                    if (-not $networkname) {
+                        $networkname = $vmnetwork
+                    }
+                    
+                    Write-Host "Setting network adapter $vmna to $networkname..."
+                    Get-VM $setvmna | Get-NetworkAdapter -Name $vmna | Set-NetworkAdapter -NetworkName $networkname -ErrorVariable err -ea SilentlyContinue
 
-                            if ($trysetvmna -match '^[nN]$') {
-                                Write-Host "Exiting..." -fore red
-                            }
+                    if ($err) {
+                        Write-Host "There was an issue setting the vm network adapter." -fore red
+                        $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
 
-                        }
-                        else {
-                            Write-Host "VM Network Adapter $vmna was set to $networkname on $setvmna" -fore green
-                            $trysetvmna = 'n'
+                        if ($trysetvmna -match '^[nN]$') {
+                            Write-Host "Exiting..." -fore red
                         }
                     }
                     else {
-                        Write-Host "Setting network adapter $vmna to $vmnetwork..."
-                        Get-VM $setvmna | Get-NetworkAdapter -Name $vmna | Set-NetworkAdapter -NetworkName $vmnetwork -ErrorVariable err -ea SilentlyContinue
-
-                        if ($err) {
-                            Write-Host "There was an issue setting the vm network adapter." -fore red
-                            $trysetvmna = Read-Host -Prompt "Would you like to try again? [Y]es or [N]o"
-
-                            if ($trysetvmna -match '^[nN]$') {
-                                Write-Host "Exiting..." -fore red
-                            }
-                        }
-                        else {
-                            Write-Host "VM Network Adapter $vmna was set to $vmnetwork on $setvmna" -fore green
-                            $trysetvmna = 'n'
-                        }
+                        Write-Host "VM Network Adapter $vmna was set to $networkname on $setvmna" -fore green
+                        $trysetvmna = 'n'
                     }
+                    
                 }
             }
         }
@@ -605,7 +515,11 @@ Function newportandvs {
 
                     Write-Host "Listing existing VM Hosts..."
                     Get-VMHost | Select-Object Name 
-                    $getvmh = Read-Host -Prompt "Please enter the VM Host"
+                    $getvmh = Read-Host -Prompt "Please enter the VM Host (default is $vmhost)"
+
+                    if (-not $getvmh) {
+                        $getvmh = $vmhost
+                    }
                 
                     New-VirtualSwitch -name $newswitch -VMHost $getvmh -ErrorVariable err -ea SilentlyContinue
 
