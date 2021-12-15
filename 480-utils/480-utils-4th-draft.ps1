@@ -609,6 +609,28 @@ Function newportandvs {
     }   
 }
 
+Function retrieveip {
+    $tryip = 'y'
+    While ($tryip -match '^[yY]$') {
+        Get-VM
+        $setvm = Read-Host -Prompt "Select a VM to retrieve the IP of"
+        $thevm = Get-VM -Name $setvm -ErrorVariable err -ea silentlycontinue
+
+        if ($err) {
+            Write-Host "There was an issue with VM $setvm." -fore red
+            $tryip = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+            if ($tryip -match '^[nN]$') {
+                Write-Host "Exiting..." -fore Red
+            }
+        } else {
+            $output = $thevm.guest.IPAddress[0] + " hostname=" + $setvm
+            Write-Host $output
+            $tryip = 'n'
+        }
+    }
+}
+
 connectvcenter
 
 if ($global:DefaultVIServers) {
@@ -639,7 +661,7 @@ Please choose an option:
                 newportandvs
             }
             '5' {
-                Write-Host "Retrieve IP address of a vm Temp"
+                retrieveip
             }
             '6' {
                 Write-Host "Exiting..." -fore green
