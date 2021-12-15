@@ -610,7 +610,8 @@ Function newportandvs {
                     if ($tryswndport -match '^[nN]$') {
                         Write-Host "Exiting..." -fore red
                     }
-                } else {
+                }
+                else {
                     $portbool = Read-Host -Prompt "Create a matching port group as well? [Y]es or [N]o"
                     if ($portbool -match '^[yY]$') {
                         New-VirtualPortGroup -Name $newswitch -VirtualSwitch $newswitch -ErrorVariable err -ea SilentlyContinue
@@ -623,7 +624,8 @@ Function newportandvs {
                                 Write-Host "Exiting..." -fore Red
                             }
                         }
-                    } else {
+                    }
+                    else {
                         $tryswndport = 'n'
                     }
                     $tryswndport = 'n'
@@ -646,7 +648,8 @@ Function newportandvs {
                     if ($tryswndport -match '^[nN]$') {
                         Write-Host "Exiting..." -fore red
                     }
-                } else {
+                }
+                else {
                     $tryswndport = 'n'
                 }
 
