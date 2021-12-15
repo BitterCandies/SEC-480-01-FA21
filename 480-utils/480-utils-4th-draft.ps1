@@ -612,7 +612,7 @@ Function newportandvs {
 Function retrieveip {
     $tryip = 'y'
     While ($tryip -match '^[yY]$') {
-        Get-VM
+        Get-VM | Sort-Object -Property Name
         $setvm = Read-Host -Prompt "Select a VM to retrieve the IP of"
         $thevm = Get-VM -Name $setvm -ErrorVariable err -ea silentlycontinue
 
