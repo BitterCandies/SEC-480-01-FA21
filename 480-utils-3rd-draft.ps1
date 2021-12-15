@@ -1,5 +1,4 @@
 # TO DO
-#    Create a function to add a virtual switch and portgroup
 #    Add a function that creates a blueX-LAN network (?)
 #    Create the blueX-fw vm (via full clone or linked)
 #    Create a function to get the first IP address of a running VM. Output to be in ansible inventory format.
@@ -7,6 +6,8 @@
 clear
 
 . ./480-vars.ps1
+
+#$ErrorActionPreference = "silentlycontinue"
 
 Function connectvcenter { 
     # This is just to connect to the vcenter server. It will always ask first which server to connect to. 
@@ -588,71 +589,104 @@ Function newportandvs {
     While ($tryswndport -match '^[yY]$') {
         Write-Host "Would you like to create a new switch or a new port group?
 [1] Switch
-[2] Port Group"
+[2] Port Group
+[3] Go Back"
         $sworport = Read-Host -Prompt "Choose"
 
         switch ($sworport) {
             '1' {
-                Write-Host "Listing existing switches..."
-                Get-VirtualSwitch
-                $newswitch = Read-Host -Prompt "Please enter the name of the new virtual switch"
+                $tryswitch = 'y'
+                While ($tryswitch -match '^[yY]$') {
+                    Write-Host "Listing existing switches..."
+                    Get-VirtualSwitch
+                    $newswitch = Read-Host -Prompt "Please enter the name of the new virtual switch"
 
-                Write-Host "Listing existing VM Hosts..."
-                Get-VMHost | Select-Object Name
-                $getvmh = Read-Host -Prompt "Please enter the VM Host"
+                    Write-Host "Listing existing VM Hosts..."
+                    Get-VMHost | Select-Object Name 
+                    $getvmh = Read-Host -Prompt "Please enter the VM Host"
                 
-                New-VirtualSwitch -name $newswitch -VMHost $getvmh -ErrorVariable err -ea SilentlyContinue
+                    New-VirtualSwitch -name $newswitch -VMHost $getvmh -ErrorVariable err -ea SilentlyContinue
 
-                if ($err) {
-                    Write-Host "There was an issue attempting to create a new virtual switch named $newswitch on $getvmh."
-                    $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+                    if ($err) {
+                        Write-Host "There was an issue attempting to create a new virtual switch named $newswitch on $getvmh." -fore red
+                        $tryswitch = Read-Host -Prompt "Try again? [Y]es or [N]o"
 
-                    if ($tryswndport -match '^[nN]$') {
-                        Write-Host "Exiting..." -fore red
-                    }
-                }
-                else {
-                    $portbool = Read-Host -Prompt "Create a matching port group as well? [Y]es or [N]o"
-                    if ($portbool -match '^[yY]$') {
-                        New-VirtualPortGroup -Name $newswitch -VirtualSwitch $newswitch -ErrorVariable err -ea SilentlyContinue
-
-                        if ($err) {
-                            Write-Host "There was an issue attempting to create a new port group named $newswitch for virtual switch $newswitch on $getvmh."
-                            $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
-
-                            if ($tryswndport -match '^[nN]$') {
-                                Write-Host "Exiting..." -fore Red
-                            }
+                        if ($tryswitch -match '^[nN]$') {
+                            Write-Host "Exiting..." -fore red
+                            
                         }
                     }
                     else {
-                        $tryswndport = 'n'
+                        $portbool = Read-Host -Prompt "Create a matching port group as well? [Y]es or [N]o"
+                        if ($portbool -match '^[yY]$') {
+                            Get-VirtualSwitch -Name $newswitch | New-VirtualPortGroup -Name $newswitch -ErrorVariable err -ea SilentlyContinue #| Select-Object Name,VirtualSwitch
+
+                            if ($err) {
+                                Write-Host "There was an issue attempting to create a new port group named $newswitch for virtual switch $newswitch on $getvmh." -fore red
+                                $tryswitch = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                                if ($tryswitch -match '^[nN]$') {
+                                    Write-Host "Exiting..." -fore Red
+                                }
+                            }
+                        }
+                        else {
+                            $tryswitch = 'n'
+                        }
+                        $tryswitch = 'n'
                     }
-                    $tryswndport = 'n'
                 }
             }
             '2' {
-                Write-Host "Listing virtual port groups..."
-                Get-VirtualPortGroup | Select-Object Name
-                $newportgroup = Read-Host -Prompt "Please enter the name of the new port group"
+                $tryport = 'y'
+                While ($tryport -match '^[yY]$') {
+                    Write-Host "Listing virtual port groups..."
+                    $listvpgs = @(Get-VirtualPortGroup | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
+                    foreach ($i in $listvpgs) {
+                        Write-Host $i
+                    }
+                    $newportgroup = Read-Host -Prompt "Please enter the name of the new port group"
 
-                Write-Host "Listing virtual switches..."
-                Get-VirtualSwitch | Select-Object Name
-                $selswitch = Read-Host -Prompt "Please enter the name of a switch"
-                New-VirtualPortGroup -Name $newportgroup -VirtualSwitch $selswitch -ErrorVariable err -ea SilentlyContinue
+                    Write-Host "Listing virtual switches..."
+                    Get-VirtualSwitch
+                    $selswitch = Read-Host -Prompt "Please enter the name of a switch"
 
-                if ($err) {
-                    Write-Host "There was an issue creating new port group $newportgroup for switch $selswitch."
-                    $tryswndport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+                    $listswitch = @(Get-VirtualSwitch | Select-Object Name | ForEach-Object { $_ -replace "@{Name=", "" -replace "}", "" })
+                    foreach ($i in $listswitch) {
+                        Write-Host $i
+                        if ($i -match $selswitch) {
+                            $yesswitch = 1
+                        }
+                    }
+                    if ($yesswitch) {
+                        Get-VirtualSwitch -Name $selswitch | New-VirtualPortGroup -Name $newportgroup -ErrorVariable err -ea SilentlyContinue
 
-                    if ($tryswndport -match '^[nN]$') {
-                        Write-Host "Exiting..." -fore red
+                        if ($err) {
+                            Write-Host "There was an issue creating new port group $newportgroup for switch $selswitch." -fore red
+                            $tryport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                            if ($tryport -match '^[nN]$') {
+                                Write-Host "Exiting..." -fore red
+                            }
+                        }
+                        else {
+                            Write-Host "$newportgroup was added for $selswitch." -fore green
+                            Write-Host $err
+                            $tryport = 'n'
+                        }
+                    }
+                    else {
+                        Write-Host "There was an issue creating new port group $newportgroup for non-existing switch $selswitch." -fore red
+                        $tryport = Read-Host -Prompt "Try again? [Y]es or [N]o"
+
+                        if ($tryport -match '^[nN]$') {
+                            Write-Host "Exiting..." -fore red
+                        }
                     }
                 }
-                else {
-                    $tryswndport = 'n'
-                }
-
+            }
+            '3' {
+                $tryswndport = 'n'
             }
         }
         
