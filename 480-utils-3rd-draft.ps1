@@ -7,6 +7,8 @@ clear
 
 . ./480-vars.ps1
 
+#Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $false
+
 #$ErrorActionPreference = "silentlycontinue"
 
 Function connectvcenter { 
@@ -697,7 +699,7 @@ connectvcenter
 
 if ($global:DefaultVIServers) {
     # If there's a connection to a vcenter server.
-    Write-Host "Now connected to $visername."
+    Write-Host "Now connected to $global:visername."
     while ($true) {
         Write-Host "
 Please choose an option:
