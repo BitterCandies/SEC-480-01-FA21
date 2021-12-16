@@ -1,1 +1,22 @@
-temp
+linux:
+  hosts:
+  children:
+    centos:
+      hosts:
+        10.0.5.81:
+          hostname: macsec-1
+          lan_ip: 10.0.5.20
+        10.0.5.80:
+          hostname: mmacsec-2
+          lan_ip: 10.0.5.21
+
+  vars:
+    public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCkXfupgR6hUsuiAWseri3tEqaGFE1llEC8DUTSSGvXQlHPRL6493lKTCGxXbR1YU3U3m+8cy7xpgPOHnILP6EicXXTxLyGxkTH+9WXy/Qi7MzGwwidYpKLioPeSfLB6jO5OjfOfVTQ8mpqDZansnOTCzOUS8QM+TUV3M12hRvHrSJJ//XDoWVZdkhIWv3w5iHm6D6ktrYDvPPaATeYvP4bSWAxR1t9WFW1LiR2aP0BJkgvrVk707c7MxnLjRSTInuykuez3amveV9X5f2igjYsZkOchhduaKq3EJt6DO/uv3J9LLEe0lFKlx9ekbJFMSpwUyn7sxRDMBhgdaFXFphfuugCXRR+WlYKQT4rKrnMaJdIqII/0RQgGvTy8RIinKkSP/gI8g7K/0ADMMUWPYuVqdXcedB4iqar27Dh+S+RRXZBBXOcNFFAXK3Q1SsyyzWF8wY4rLt7v6vmN3qIBZbrZCzf/Gf9ZyvcoVcOq0ngK2Vkx2fWg/Alg3hytBVNZGs="
+    ansible_user: deployer
+    device: ens192
+    prefix: 24
+    gateway: 10.0.5.2
+    name_server: 10.0.5.5
+    domain: blue10.local
+    macsecmac: fe80::6435:1651:eb7c:e58f
+    secmacsec: fe80::1101:5ab2:db88:8a33
