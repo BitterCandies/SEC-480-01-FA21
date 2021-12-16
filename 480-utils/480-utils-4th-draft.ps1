@@ -631,6 +631,7 @@ Function retrieveip($vmname) {
             } else {
                 $output = $thevm.guest.IPAddress[0] + " hostname=" + $setvm
                 Write-Host $output
+                Write-Host $thevm.guest.IPAddress
                 $tryip = 'n'
             }
         }  
