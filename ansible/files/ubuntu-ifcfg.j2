@@ -1,0 +1,17 @@
+# This file describes the newtork interfaces available on your system
+# and how to activate them.
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+auto {{ device }}
+iface {{ device }} inet static
+	address {{ lan_ip }}
+	netmask {{ prefix }}
+	network {{ network }}
+	broadcast {{ broadcast }}
+	gateway {{ gateway }}
+	dns-namservers {{ name_server }}
+	dns-domain {{ domain }}
+	dns-search {{ domain }} 
