@@ -1,0 +1,22 @@
+# This will join the specified machines to the blue10 domain
+- name: domain-joining
+  hosts: all
+  gather_facts: no
+  vars_prompt:
+    - name: domain_admin_password
+      prompt: "What is the domain admin password?"
+      private: yes
+
+  tasks:
+    - name: join the domain
+      win_domain_membership:
+        hostname: "{{ hostname }}"
+        domain_admin_user: Administrator@blue10.local
+        domain_admin_password: "{{ domain_admin_password }}"
+        dns_domain_name: "{{ domain }}"
+        domain_ou_path: "{{ domain_ou_path }}"
+        state: domain
+      register: domain_state
+    - name: reboot
+      win_reboot:
+      when: domain_state.reboot_required
