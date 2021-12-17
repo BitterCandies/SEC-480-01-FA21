@@ -1,0 +1,26 @@
+---
+- name: Create a Blue Team Domain Controller
+  hosts: 10.0.5.5
+  gather_facts: no
+  vars_prompt:
+  - name: adminpassword
+    prompt: "What will be the safe mode password?"
+    private: yes
+  
+  tasks:
+    - name: Create new forest
+      win_domain:
+        dns_domain_name: "{{ domain }}"
+        safe_mode_password: "{{ adminpassword }}"
+      register: domain_install
+
+    - name: Reboot after creation
+      when: domain_install.reboot_required
+      win_reboot:
+        msg: "Server config in process: rebooting..."
+        #DP F21 - this replaces a lot of wait scripts
+        #the way it works is this will only run the test command if DNS is running, otherwise it is repeated due ot the exit.
+        test_command: 'exit (Get-Service -Name DNS).Status -ne "Running"'
+    - name: DNS config
+      win_shell: |
+        Add-DNSServerForwarder -IPAddress "{{ gateway }}" -PassThru
